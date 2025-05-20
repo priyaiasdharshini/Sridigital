@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sri Digital - Flex Printing & LED</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.5/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0D0221 0%, #1F0440 100%);
+      min-height: 100vh;
+      font-family: 'Orbitron', sans-serif;
+      color: #E0E0E0;
+      overflow-x: hidden;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">{Array.from({length: 50}).map((_, i) => `<circle cx="${Math.random() * 100}%" cy="${Math.random() * 100}%" r="1" fill="#E0E0E0"><animate attributeName="opacity" values="0;1;0" dur="${Math.random() * 3 + 2}s" repeatCount="indefinite"/></circle>`).join('')}</g></svg>');
+      pointer-events: none;
+      z-index: -1;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .float-card {
+      animation: float 3s ease-in-out infinite;
+      border: 1px solid #FF1493;
+      box-shadow: 0 0 15px rgba(255, 20, 147, 0.5);
+    }
+    .neon-glow {
+      box-shadow: 0 0 10px #1E90FF, 0 0 20px #1E90FF, 0 0 30px #FF1493;
+      transition: all 0.3s ease;
+    }
+    .neon-glow:hover {
+      box-shadow: 0 0 15px #1E90FF, 0 0 30px #1E90FF, 0 0 45px #FF1493;
+    }
+    .neon-text {
+      background: linear-gradient(90deg, #1E90FF, #FF1493);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .canvas-container {
+      width: 100%;
+      height: 400px;
+    }
+    .fade-in {
+      opacity: 0;
+      animation: fadeIn 1s ease forwards;
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    .dropdown-link {
+      transform: translateY(-10px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .dropdown-open .dropdown-link {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .social-icon {
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+    .social-icon:hover {
+      transform: translateY(-5px);
+      color: #FF1493;
+    }
+    @media (max-width: 768px) {
+      .canvas-container {
+        height: 250px;
+      }
+      .text-5xl { font-size: 2.5rem; }
+      .text-4xl { font-size: 2rem; }
+      .text-3xl { font-size: 1.75rem; }
+      .text-2xl { font-size: 1.5rem; }
+      .text-xl { font-size: 1.25rem; }
+      .text-lg { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Navbar = () => {
+      const [isOpen, setIsOpen] = useState(false);
+
+      return (
+        <nav className="bg-[#4B0082] p-4 sticky top-0 z-10 rounded-b-lg shadow-lg">
+          <div className="container mx-auto flex justify-between items-center">
+            <div className="text-2xl font-bold neon-text text-center flex-1 md:flex-none">Sri Digital</div>
+            <button
+              className="md:hidden text-[#E0E0E0] focus:outline-none"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
+            <div className={`md:flex md:space-x-6 ${isOpen ? 'block dropdown-open' : 'hidden'} md:block absolute md:static top-16 left-0 w-full md:w-auto bg-[#4B0082] md:bg-transparent p-4 md:p-0 rounded-b-lg md:rounded-none`}>
+              {['Home', 'Designs', 'Works', 'About', 'Contact'].map((page, index) => (
+                <a
+                  key={page}
+                  href={`#${page.toLowerCase()}`}
+                  className={`block md:inline-block text-[#E0E0E0] hover:text-[#FF1493] px-3 py-2 rounded-lg transition duration-300 dropdown-link`}
+                  style={{ transitionDelay: `${index * 50}ms` }}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {page}
+                </a>
+              ))}
+            </div>
+          </div>
+        </nav>
+      );
+    };
+
+    const ThreeScene = ({ id }) => {
+      useEffect(() => {
+        const canvas = document.getElementById(id);
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshPhongMaterial({ color: 0x1E90FF, shininess: 100 });
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
+
+        const light = new THREE.PointLight(0xFF1493, 1, 100);
+        light.position.set(5, 5, 5);
+        scene.add(light);
+
+        camera.position.z = 5;
+
+        const animate = () => {
+          requestAnimationFrame(animate);
+          sphere.rotation.x += 0.01;
+          sphere.rotation.y += 0.01;
+          renderer.render(scene, camera);
+        };
+        animate();
+
+        const handleResize = () => {
+          const width = canvas.clientWidth;
+          const height = canvas.clientHeight;
+          renderer.setSize(width, height);
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+        };
+        window.addEventListener('resize', handleResize);
+
+        return () => window.removeEventListener('resize', handleResize);
+      }, [id]);
+
+      return <canvas id={id} className="canvas-container"></canvas>;
+    };
+
+    const Home = () => (
+      <section id="home" className="py-20 pt-32 text-center">
+        <h1 className="text-5xl font-bold neon-text mb-4 fade-in">Welcome to Sri Digital</h1>
+        <p className="text-xl text-[#E0E0E0] mb-6 fade-in">Flex Printing & LED </p>
+        <p className="text-xl text-[#E0E0E0] mb-6 fade-in">We Shaping your idea...!</p>
+        <ThreeScene id="home-3d" />
+       
+        <div className="mt-12">
+          <h2 className="text-3xl font-semibold neon-text mb-4 fade-in">What Our Clients Say</h2>
+          <div className="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4">
+            {['"Amazing flex printing quality!"', '"The LED designs were stunning!"', '"Best logo design service!"'].map((quote, index) => (
+              <div key={index} className="bg-[#1F0440] p-4 rounded-lg w-full md:w-1/3 float-card fade-in">
+                <p className="text-[#E0E0E0]">{quote}</p>
+                <p className="text-[#FF1493] font-semibold mt-2">- Client {index + 1}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <a href="#designs">
+          <button className="mt-8 bg-[#1E90FF] text-[#E0E0E0] px-6 py-3 rounded-lg hover:bg-[#FF1493] neon-glow transition duration-300">
+            Explore Our Services
+          </button>
+        </a>
+      </section>
+    );
+
+    const Designs = () => (
+      <section id="designs" className="py-20 container mx-auto">
+        <h2 className="text-4xl font-bold neon-text text-center mb-8 fade-in">Our Design Services</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { name: 'Logo Designing', desc: 'Create unique and memorable logos that represent your brand.', imgLink: '/src/assets/logos1.jpeg' },
+            { name: 'Brochure Design', desc: 'Design professional brochures to showcase your products and services.', imgLink: '/src/assets/foodmenu.jpeg' },
+            { name: 'Banner Design', desc: 'Eye-catching banners for events, promotions, and advertisements.', imgLink: '/src/assets/banner1.jpeg' },
+            { name: 'Flyer/Poster', desc: 'Custom flyers and posters for marketing and events.', imgLink: '/src/assets/flying poster.jpeg' },
+            { name: 'Hotel Flex', desc: 'Professional Flex to make a lasting impression.', imgLink: '/src/assets/flexhotel.jpeg' },
+            { name: 'Movie Tickets', desc: 'Custom movie tickets for branding and decor.', imgLink: '/src/assets/movieticket.jpeg' },
+          ].map(service => (
+            <div
+              key={service.name}
+              className="bg-[#1F0440] p-6 rounded-lg text-center float-card fade-in"
+            >
+              <img
+                src={service.imgLink}
+                alt={service.name}
+                className="w-20 h-20 object-cover rounded-full mx-auto mb-4 border border-[#FF1493]"
+              />
+              <h3 className="text-xl font-semibold neon-text">{service.name}</h3>
+              <p className="text-[#E0E0E0] mt-2">{service.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-12">
+          <h3 className="text-2xl font-semibold neon-text text-center mb-4 fade-in">Design Images</h3>
+          <div className="columns-1 md:columns-3 gap-6 space-y-6">
+            {[
+              { title: 'Logo Sample', desc: 'A modern logo design for a tech company.', imgLink: '/src/assets/bosslogo.jpeg' },
+              { title: 'LED', desc: 'A vibrant banner for a promotional event.', imgLink: '/src/assets/fashionled.jpeg' },
+              { title: 'Flyer Design', desc: 'A flyer for a local event.', imgLink: '/src/assets/flying poster.jpeg' },
+              { title: 'Menu Card Sample', desc: 'A sleek menu design for a cafe.', imgLink: '/src/assets/foodmenu.jpeg' },
+            ].map(image => (
+              <div
+                key={image.title}
+                className="bg-[#1F0440] p-4 rounded-lg break-inside-avoid float-card fade-in"
+              >
+                <img
+                  src={image.imgLink}
+                  alt={image.title}
+                  className="w-full h-48 object-cover rounded-lg mb-4 border border-[#FF1493]"
+                />
+                <h4 className="text-lg font-semibold neon-text">{image.title}</h4>
+                <p className="text-[#E0E0E0]">{image.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-12 text-center">
+          <h3 className="text-2xl font-semibold neon-text mb-4 fade-in">Interactive Design Preview</h3>
+          <ThreeScene id="designs-3d" />
+        </div>
+      </section>
+    );
+
+    const Works = () => (
+      <section id="works" className="py-20 container mx-auto">
+        <h2 className="text-4xl font-bold neon-text text-center mb-8 fade-in">Our Works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[
+            { name: 'Flex Printing', desc: 'High-quality flex prints for outdoor advertising.', imgLink: '/src/assets/flexhotel.jpeg' },
+            { name: 'Retail Store', desc: 'Custom cloth printing for banners and decor.', imgLink: '/src/assets/retailstrorefrontledbanner.jpeg' },
+            { name: 'Logos', desc: 'Large-scale wall posters for branding.', imgLink: '/src/assets/logos2.jpeg' },
+            { name: 'LED Displays', desc: 'Bright and vibrant LED displays for events.', imgLink: '/src/assets/thebossmobiles.jpeg' },
+            { name: 'Corporate', desc: 'Professional visiting cards for networking.', imgLink: '/src/assets/corporate.jpeg' },
+            { name: 'Flex Pasting', desc: 'Expert flex pasting for seamless installations.', imgLink: '/src/assets/flex.jpeg' },
+            { name: 'LED Displays', desc: 'Precise fitting works for all signage.', imgLink: '/src/assets/shreepooranamsweetsled.jpeg' },
+            { name: 'Menu Cards', desc: 'Elegant menu cards for restaurants.', imgLink: '/src/assets/foodmenu.jpeg' },
+          ].map(work => (
+            <div
+              key={work.name}
+              className="bg-[#1F0440] p-6 rounded-lg text-center float-card fade-in"
+            >
+              <img
+                src={work.imgLink}
+                alt={work.name}
+                className="w-20 h-20 object-cover rounded-full mx-auto mb-4 border border-[#FF1493]"
+              />
+              <h3 className="text-xl font-semibold neon-text">{work.name}</h3>
+              <p className="text-[#E0E0E0] mt-2">{work.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-12">
+          <h3 className="text-2xl font-semibold neon-text text-center mb-4 fade-in">Work Images</h3>
+          <div className="columns-1 md:columns-3 gap-6 space-y-6">
+            {[
+              { title: 'Flex Print Project', desc: 'A large flex print for a local event.', imgLink: '/src/assets/flexhotel.jpeg' },
+              { title: 'LED Display Installation', desc: 'A vibrant LED display for a store.', imgLink: '/src/assets/led.jpeg' },
+              { title: 'Software Technology', desc: 'Custom vinyl stickers on a vehicle.', imgLink: '/src/assets/urtechnologies.jpeg' },
+              { title: 'Wall Poster Project', desc: 'A large wall poster for a brand campaign.', imgLink: '/src/assets/banner1.jpeg' },
+              { title: 'Movie Tickets', desc: 'A professional movie tickets card design.', imgLink: '/src/assets/movieticket.jpeg' },
+              { title: 'LED Display Installation', desc: 'A vibrant LED display for a hostel.', imgLink: '/src/assets/hostelladies.jpeg' },
+            ].map(image => (
+              <div
+                key={image.title}
+                className="bg-[#1F0440] p-4 rounded-lg break-inside-avoid float-card fade-in"
+              >
+                <img
+                  src={image.imgLink}
+                  alt={image.title}
+                  className="w-full h-48 object-cover rounded-lg mb-4 border border-[#FF1493]"
+                />
+                <h4 className="text-lg font-semibold neon-text">{image.title}</h4>
+                <p className="text-[#E0E0E0]">{image.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-12 text-center">
+          <h3 className="text-2xl font-semibold neon-text mb-4 fade-in">3D Work Model</h3>
+          <ThreeScene id="works-3d" />
+        </div>
+      </section>
+    );
+
+    const About = () => (
+      <section id="about" className="py-20 container mx-auto text-center">
+        <h2 className="text-4xl font-bold neon-text mb-8 fade-in">About Us</h2>
+        <p className="text-lg text-[#E0E0E0] max-w-2xl mx-auto mb-6 fade-in">
+          Sri Digital specializes in Flex Printing & LED solutions. We offer a wide range of services including LED, Flex Pasting & Fitting Works, Visiting Cards, Menu Cards, Flyers/Posters, and more. Let us shape your ideas into stunning visuals!
+        </p>
+        <h3 className="text-2xl font-semibold neon-text mb-4 fade-in">Our Mission</h3>
+        <div className="relative max-w-2xl mx-auto mb-12">
+          <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-[#1E90FF] to-[#FF1493]"></div>
+          <div className="space-y-8">
+            <div className="bg-[#1F0440] p-4 rounded-lg text-left relative float-card">
+              <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-[#FF1493] rounded-full border-4 border-[#E0E0E0]"></div>
+              <p className="text-[#E0E0E0] ml-8">Deliver top-notch digital printing and LED solutions that exceed client expectations.</p>
+            </div>
+            <div className="bg-[#1F0440] p-4 rounded-lg text-right relative float-card">
+              <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-[#FF1493] rounded-full border-4 border-[#E0E0E0]"></div>
+              <p className="text-[#E0E0E0] mr-8">Blend creativity with technology to shape stunning visuals.</p>
+            </div>
+          </div>
+        </div>
+        <h3 className="text-2xl font-semibold neon-text mb-4 fade-in">Meet Our Team</h3>
+        <div className="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4">
+          {['Designer', 'Printer', 'Installer'].map((role, index) => (
+            <div key={role} className="bg-[#1F0440] p-4 rounded-lg w-full md:w-1/4 float-card fade-in">
+              <div
+                className="w-16 h-16 bg-cover rounded-full mx-auto mb-4"
+                style={{ backgroundImage: `url('https://via.placeholder.com/80x80.png?text=${role}+Icon')` }}
+              ></div>
+              <p className="text-[#FF1493] font-semibold neon-text">Team {role}</p>
+              <p className="text-[#E0E0E0]">Expert in {role.toLowerCase()} services.</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+
+    const Contact = () => (
+      <section id="contact" className="py-20 container mx-auto text-center">
+        <h2 className="text-4xl font-bold neon-text mb-8 fade-in">Contact Us</h2>
+        <p className="text-lg text-[#E0E0E0] mb-4 fade-in">Phone: 86101 80704 / 84894 70585</p>
+        <p className="text-lg text-[#E0E0E0] mb-4 fade-in">Email: sridigitaludt@gmail.com</p>
+        <div className="bg-[#1F0440] p-6 rounded-lg max-w-lg mx-auto mb-8 float-card fade-in">
+          <h3 className="text-2xl font-semibold neon-text mb-4">Get in Touch</h3>
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Your Name"
+              className="w-full p-2 border border-[#FF1493] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E90FF] bg-[#0D0221] text-[#E0E0E0]"
+            />
+            <input
+              type="email"
+              placeholder="Your Email"
+              className="w-full p-2 border border-[#FF1493] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E90FF] bg-[#0D0221] text-[#E0E0E0]"
+            />
+            <textarea
+              placeholder="Your Message"
+              className="w-full p-2 border border-[#FF1493] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E90FF] bg-[#0D0221] text-[#E0E0E0]"
+              rows="4"
+            ></textarea>
+            <button className="bg-[#1E90FF] text-[#E0E0E0] px-6 py-2 rounded-lg hover:bg-[#FF1493] neon-glow transition duration-300">
+              Send Message
+            </button>
+          </div>
+        </div>
+        <div
+          className="w-full h-40 bg-cover rounded-lg mx-auto float-card fade-in"
+          style={{ backgroundImage: `url('/src/assets/LOGO.jpeg')` }}
+        ></div>
+      </section>
+    );
+
+    const App = () => (
+      <div>
+        <Navbar />
+        <Home />
+        <Designs />
+        <Works />
+        <About />
+        <Contact />
+        <footer className="bg-[#4B0082] text-[#E0E0E0] text-center p-4">
+          <p className="neon-text fade-in">© 2025 Sri Digital. All rights reserved.</p>
+          <div className="flex justify-center space-x-4 mt-2">
+            {['Facebook', 'Twitter', 'Instagram'].map((platform) => (
+              <a
+                key={platform}
+                href="#"
+                className="text-[#E0E0E0] social-icon"
+              >
+                {platform}
+              </a>
+            ))}
+          </div>
+        </footer>
+      </div>
+    );
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
